@@ -194,12 +194,12 @@ class FINDER:
         cdef int lv = 0
         #[node_cnt, embed_dim], no sparse
         cur_message_layer = input_potential_layer
-        cur_message_layer = tf.nn.l2_normalize(cur_message_layer, axis=1)
+        cur_message_layer = tf.nn.l2_normalize(cur_message_layer, dim=1)
 
         #[batch_size, embed_dim], no sparse
         y_cur_message_layer = y_input_potential_layer
         # [batch_size, embed_dim]
-        y_cur_message_layer = tf.nn.l2_normalize(y_cur_message_layer, axis=1)
+        y_cur_message_layer = tf.nn.l2_normalize(y_cur_message_layer, dim=1)
 
         while lv < max_bp_iter:
             lv = lv + 1
@@ -239,8 +239,8 @@ class FINDER:
                 #[batch_size, 2*embed_dim]*[2*embed_dim, embed_dim] = [batch_size, embed_dim]
                 y_cur_message_layer = tf.nn.relu(tf.matmul(y_merged_linear, p_node_conv3))
 
-            cur_message_layer = tf.nn.l2_normalize(cur_message_layer, axis=1)
-            y_cur_message_layer = tf.nn.l2_normalize(y_cur_message_layer, axis=1)
+            cur_message_layer = tf.nn.l2_normalize(cur_message_layer, dim=1)
+            y_cur_message_layer = tf.nn.l2_normalize(y_cur_message_layer, dim=1)
 
         # self.node_embedding = cur_message_layer
         #[batch_size, node_cnt] * [node_cnt, embed_dim] = [batch_size, embed_dim], dense
