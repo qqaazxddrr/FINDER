@@ -7,35 +7,37 @@ from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 
 
+def set_py(input):
+    return set(input)
+
+
 def set_edge_weight(g):
-    a=nx.adjacency_matrix(g).todense()
-    a=np.array(a+np.eye(cur_n))
-    b=np.random.rand(cur_n,cur_n)
-    c=a*b
+    cur_n = len(g.nodes())
+    a = nx.adjacency_matrix(g).todense()
+    a = np.array(a + np.eye(cur_n))
+    b = np.random.rand(cur_n, cur_n)
+    c = a * b
     edge_weight = normalize(c, axis=0, norm='l1')
     return edge_weight
 
+
 def preprocess(g):
-    seed=random.sample(g.nodes(),round(cur_n*seed_perc))
     if type(g) == nx.MultiGraph or type(g) == nx.MultiDiGraph:
         raise Exception(
-          "linear_threshold() is not defined for graphs with multiedges.")
-    for s in seed:
-        if s not in g.nodes():
-            raise Exception("seed", s, "is not in graph")
+            "linear_threshold() is not defined for graphs with multiedges.")
 
     # change to directed graph
     if not g.is_directed():
         DG = g.to_directed()
     else:
-        DG = copy.deepcopy(g)        # copy.deepcopy 深拷贝 拷贝对象及其子对象
+        DG = copy.deepcopy(g)  # copy.deepcopy 深拷贝 拷贝对象及其子对象
 
     # init thresholds
     for n in DG.nodes():
         if 'threshold' not in DG.node[n]:
             DG.node[n]['threshold'] = random.random()
         elif DG.node[n]['threshold'] > 1:
-            raise Exception("node threshold:", DG.node[n]['threshold'], \
+            raise Exception("node threshold:", DG.node[n]['threshold'],
                             "cannot be larger than 1")
 
     edge_weight = set_edge_weight(DG)
@@ -43,24 +45,25 @@ def preprocess(g):
     # init influence weight
     for e in DG.edges():
         if 'influence' not in DG[e[0]][e[1]]:
-            DG[e[0]][e[1]]['influence'] =  edge_weight[e[0]][e[1]]   #设置边的权重
+            DG[e[0]][e[1]]['influence'] = edge_weight[e[0]][e[1]]  # 设置边的权重
         elif DG[e[0]][e[1]]['influence'] > 1:
             raise Exception("edge influence:", DG[e[0]][e[1]]['influence'], \
                             "cannot be larger than 1")
-    return DG,seed
+    return DG
+
 
 class inf_utils:
-    def __init__(self,g,seeds):
+    def __init__(self, g, seeds):
         self.g = g
         self.seeds = seeds
 
-    def _influence_sum(self,G, froms, to):
+    def _influence_sum(self, G, froms, to):
         influence_sum = 0.0
         for f in froms:
             influence_sum += G[f][to]['influence']
         return influence_sum
 
-    def _diffuse_one_round(self,G, A):
+    def _diffuse_one_round(self, G, A):
         activated_nodes_of_this_round = set()
         for s in A:
             nbs = G.successors(s)
@@ -73,7 +76,7 @@ class inf_utils:
         A.extend(list(activated_nodes_of_this_round))
         return A, list(activated_nodes_of_this_round)
 
-    def _diffuse_all(self,g, A):
+    def _diffuse_all(self, g, A):
         layer_i_nodes = []
         layer_i_nodes.append([i for i in A])
         while True:
@@ -115,19 +118,16 @@ class inf_utils:
         return coverd_mean, coverd_mean / len(self.g.nodes())
 
 
-if __name__=="__main__":
-
+if __name__ == "__main__":
     max_n = 500
     min_n = 300
     seed_perc = 0.1
-    le_iter=10
+    le_iter = 10
     cur_n = np.random.randint(max_n - min_n + 1) + min_n
     g_synthesis = nx.barabasi_albert_graph(n=cur_n, m=4)
-    DG,seeds=preprocess(g_synthesis)
-    inf = inf_utils(DG,seeds)
-    influence_auc, influence_auc_pct = inf.accurate_influence()
-    print("{},{}".format(influence_auc,influence_auc_pct))
+    DG, seeds = preprocess(g_synthesis)
+    inf = inf_utils(DG, seeds)
     influence_auc, influence_auc_pct = inf.accurate_influence()
     print("{},{}".format(influence_auc, influence_auc_pct))
-
-
+    influence_auc, influence_auc_pct = inf.accurate_influence()
+    print("{},{}".format(influence_auc, influence_auc_pct))

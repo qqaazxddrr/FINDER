@@ -16,14 +16,13 @@ import pickle as cp
 import sys
 from tqdm import tqdm
 import PrepareBatchGraph
-import igraph
+import graph
 import nstep_replay_mem
 import nstep_replay_mem_prioritized
 import mvc_env
 import utils
 import scipy.linalg as linalg
 import os
-from inf_utils import preprocess
 
 # Hyper Parameters:
 cdef double GAMMA = 1  # decay rate of past observations
@@ -64,8 +63,8 @@ class FINDER:
         self.embedding_size = EMBEDDING_SIZE
         self.learning_rate = LEARNING_RATE
         self.g_type = 'barabasi_albert' #erdos_renyi, powerlaw, small-world， barabasi_albert
-        self.TrainSet = igraph.py_GSet()
-        self.TestSet = igraph.py_GSet()
+        self.TrainSet = graph.py_GSet()
+        self.TestSet = graph.py_GSet()
         self.inputs = dict()
         self.reg_hidden = REG_HIDDEN
         self.utils = utils.py_Utils()
@@ -90,7 +89,7 @@ class FINDER:
 
         for i in range(num_env):
             self.env_list.append(mvc_env.py_MvcEnv(NUM_MAX))
-            self.g_list.append(igraph.py_Graph())
+            self.g_list.append(graph.py_Graph())
 
         self.test_env = mvc_env.py_MvcEnv(NUM_MAX)
 
@@ -396,14 +395,14 @@ class FINDER:
         cdef int i
         while n < num_seq:
             for i in range(num_env):
-                if self.env_list[i].igraph.num_nodes == 0 or self.env_list[i].isTerminal():
-                    if self.env_list[i].igraph.num_nodes > 0 and self.env_list[i].isTerminal():
+                if self.env_list[i].graph.num_nodes == 0 or self.env_list[i].isTerminal():
+                    if self.env_list[i].graph.num_nodes > 0 and self.env_list[i].isTerminal():
                         n = n + 1
                         self.nStepReplayMem.Add(self.env_list[i], n_step)
                         #print ('add experience transition!')
                     g_sample= TrainSet.Sample()
                     self.env_list[i].s0(g_sample)
-                    self.g_list[i] = self.env_list[i].igraph
+                    self.g_list[i] = self.env_list[i].graph
             if n >= num_seq:
                 break
 
@@ -742,7 +741,7 @@ class FINDER:
     def GetSolution(self, int gid, int step=1):
         g_list = []
         self.test_env.s0(self.TestSet.Get(gid))
-        g_list.append(self.test_env.igraph)
+        g_list.append(self.test_env.graph)
         sol = []
         start = time.time()
         cdef int iter = 0
@@ -797,7 +796,7 @@ class FINDER:
     def Test(self,int gid):
         g_list = []
         self.test_env.s0(self.TestSet.Get(gid))
-        g_list.append(self.test_env.igraph)
+        g_list.append(self.test_env.graph)
         cdef double cost = 0.0
         cdef int i
         sol = []
@@ -817,7 +816,7 @@ class FINDER:
     def GetSol(self, int gid, int step=1):
         g_list = []
         self.test_env.s0(self.TestSet.Get(gid))
-        g_list.append(self.test_env.igraph)
+        g_list.append(self.test_env.graph)
         cdef double cost = 0.0
         sol = []
         cdef int new_action
@@ -845,9 +844,6 @@ class FINDER:
         print('restore model from file successfully')
 
     def GenNetwork(self, g):    #networkx2four
-        g = preprocess(g)
-        node_w = [item[1] for item in g.nodes(data="threshold")]
-        edge_w = [item[2] for item in g.edges(data="influence")]
         edges = g.edges()
         if len(edges) > 0:
             a, b = zip(*edges)
@@ -856,7 +852,7 @@ class FINDER:
         else:
             A = np.array([0])
             B = np.array([0])
-        return igraph.py_Graph(len(g.nodes()), len(edges), A, B, edge_w, node_w)
+        return graph.py_Graph(len(g.nodes()), len(edges), A, B)
 
 
     def argMax(self, scores):
