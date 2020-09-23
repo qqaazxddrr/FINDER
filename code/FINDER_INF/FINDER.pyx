@@ -16,13 +16,15 @@ import pickle as cp
 import sys
 from tqdm import tqdm
 import PrepareBatchGraph
-import graph
+import igraph
 import nstep_replay_mem
 import nstep_replay_mem_prioritized
-import mvc_env
+import inf_env
 import utils
 import scipy.linalg as linalg
 import os
+from inf_utils import preprocess
+
 
 # Hyper Parameters:
 cdef double GAMMA = 1  # decay rate of past observations
@@ -63,8 +65,8 @@ class FINDER:
         self.embedding_size = EMBEDDING_SIZE
         self.learning_rate = LEARNING_RATE
         self.g_type = 'barabasi_albert' #erdos_renyi, powerlaw, small-world， barabasi_albert
-        self.TrainSet = graph.py_GSet()
-        self.TestSet = graph.py_GSet()
+        self.TrainSet = igraph.py_GSet()
+        self.TestSet = igraph.py_GSet()
         self.inputs = dict()
         self.reg_hidden = REG_HIDDEN
         self.utils = utils.py_Utils()
@@ -88,10 +90,10 @@ class FINDER:
             self.nStepReplayMem = nstep_replay_mem.py_NStepReplayMem(MEMORY_SIZE)
 
         for i in range(num_env):
-            self.env_list.append(mvc_env.py_MvcEnv(NUM_MAX))
-            self.g_list.append(graph.py_Graph())
+            self.env_list.append(inf_env.py_MvcEnv(NUM_MAX))
+            self.g_list.append(igraph.py_Graph())
 
-        self.test_env = mvc_env.py_MvcEnv(NUM_MAX)
+        self.test_env = inf_env.py_MvcEnv(NUM_MAX)
 
         # [batch_size, node_cnt]
         self.action_select = tf.sparse_placeholder(tf.float32, name="action_select")
@@ -852,7 +854,7 @@ class FINDER:
         else:
             A = np.array([0])
             B = np.array([0])
-        return graph.py_Graph(len(g.nodes()), len(edges), A, B)
+        return igraph.py_Graph(len(g.nodes()), len(edges), A, B)
 
 
     def argMax(self, scores):

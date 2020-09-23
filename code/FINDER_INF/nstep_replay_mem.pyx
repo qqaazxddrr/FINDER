@@ -3,7 +3,7 @@ from libcpp.memory cimport shared_ptr
 from libc.stdlib cimport malloc
 from libc.stdlib cimport free
 from libcpp cimport bool
-import  graph
+import  igraph
 import  numpy as np
 # import gc
 
@@ -47,13 +47,13 @@ cdef class py_ReplaySample:
         for i in range(num_edges):
             cint_edges_from[i]=edge_list[i].first
             cint_edges_to[i] =edge_list[i].second
-        return graph.py_Graph(num_nodes,num_edges,cint_edges_from,cint_edges_to)
+        return igraph.py_Graph(num_nodes,num_edges,cint_edges_from,cint_edges_to)
 
 
 cdef class py_NStepReplayMem:
     cdef shared_ptr[NStepReplayMem] inner_NStepReplayMem
     cdef shared_ptr[Graph] inner_Graph
-    cdef shared_ptr[MvcEnv] inner_MvcEnv
+    cdef shared_ptr[InfEnv] inner_MvcEnv
     cdef shared_ptr[ReplaySample] inner_ReplaySample
     #__cinit__会在__init__之前被调用
     def __cinit__(self,int memory_size):
@@ -78,26 +78,26 @@ cdef class py_NStepReplayMem:
     #         gc.collect()
 
 
-    def Add(self,mvcenv,int nstep):
+    def Add(self,infenv,int nstep):
         self.inner_Graph =shared_ptr[Graph](new Graph())
         # g = self.GenNetwork(mvcenv.graph)
-        g = mvcenv.graph
+        g = infenv.graph
         deref(self.inner_Graph).num_nodes= g.num_nodes
         deref(self.inner_Graph).num_edges=g.num_edges
         deref(self.inner_Graph).edge_list=g.edge_list
         deref(self.inner_Graph).adj_list=g.adj_list
-        self.inner_MvcEnv = shared_ptr[MvcEnv](new MvcEnv(mvcenv.norm))
-        deref(self.inner_MvcEnv).norm = mvcenv.norm
-        deref(self.inner_MvcEnv).graph = self.inner_Graph
-        deref(self.inner_MvcEnv).state_seq = mvcenv.state_seq
-        deref(self.inner_MvcEnv).act_seq = mvcenv.act_seq
-        deref(self.inner_MvcEnv).action_list = mvcenv.action_list
-        deref(self.inner_MvcEnv).reward_seq = mvcenv.reward_seq
-        deref(self.inner_MvcEnv).sum_rewards = mvcenv.sum_rewards
-        deref(self.inner_MvcEnv).numCoveredEdges = mvcenv.numCoveredEdges
-        deref(self.inner_MvcEnv).covered_set = mvcenv.covered_set
-        deref(self.inner_MvcEnv).avail_list = mvcenv.avail_list
-        deref(self.inner_NStepReplayMem).Add(self.inner_MvcEnv,nstep)
+        self.inner_InfEnv = shared_ptr[InfEnv](new InfEnv(infenv.norm))
+        deref(self.inner_InfEnv).norm = infenv.norm
+        deref(self.inner_InfEnv).graph = self.inner_Graph
+        deref(self.inner_InfEnv).state_seq = infenv.state_seq
+        deref(self.inner_InfEnv).act_seq = infenv.act_seq
+        deref(self.inner_InfEnv).action_list = infenv.action_list
+        deref(self.inner_InfEnv).reward_seq = infenv.reward_seq
+        deref(self.inner_InfEnv).sum_rewards = infenv.sum_rewards
+        deref(self.inner_InfEnv).numCoveredEdges = infenv.numCoveredEdges
+        deref(self.inner_InfEnv).covered_set = infenv.covered_set
+        deref(self.inner_InfEnv).avail_list = infenv.avail_list
+        deref(self.inner_NStepReplayMem).Add(self.inner_InfEnv,nstep)
 
     def Sampling(self,int batch_size):
         # self.inner_ReplaySample = shared_ptr[ReplaySample](new ReplaySample(batch_size))
@@ -145,15 +145,15 @@ cdef class py_NStepReplayMem:
         for i in range(num_edges):
             cint_edges_from[i]=edge_list[i].first
             cint_edges_to[i] =edge_list[i].second
-        return graph.py_Graph(num_nodes,num_edges,cint_edges_from,cint_edges_to)
+        return igraph.py_Graph(num_nodes,num_edges,cint_edges_from,cint_edges_to)
 
-    def GenNetwork(self, g):    #networkx2four
-        edges = g.edges()
-        if len(edges) > 0:
-            a, b = zip(*edges)
-            A = np.array(a)
-            B = np.array(b)
-        else:
-            A = np.array([0])
-            B = np.array([0])
-        return graph.py_Graph(len(g.nodes()), len(edges), A, B)
+    # def GenNetwork(self, g):    #networkx2four
+    #     edges = g.edges()
+    #     if len(edges) > 0:
+    #         a, b = zip(*edges)
+    #         A = np.array(a)
+    #         B = np.array(b)
+    #     else:
+    #         A = np.array([0])
+    #         B = np.array([0])
+    #     return igraph.py_Graph(len(g.nodes()), len(edges), A, B)
